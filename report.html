@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书馆座位助手 - 学习报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+            min-height: calc(100vh - 140px);
+        }
+
+        /* 以下是您原有的所有样式 */
+        :root{
+            --bg:#f7f5f2;
+            --card:#ffffffcc;
+            --line:#d9d4ce;
+            --table:#ece7e0;
+            --seat-empty:#f4e6d8;
+            --seat-occupied:#e86a6a;
+            --seat-away:#f2c169;
+            --text:#2c2c2c;
+            --muted:#6b6b6b;
+            --shadow:0 6px 20px rgba(0,0,0,.08);
+            --radius:16px;
+            --accent:#e86a6a;
+        }
+
+        .wrap{ max-width:980px; margin:20px auto 80px; padding:14px; }
+        .card{
+            background:var(--card);
+            backdrop-filter: blur(6px);
+            border:1px solid #eee;
+            border-radius:var(--radius);
+            box-shadow:var(--shadow);
+            padding:16px;
+            margin-bottom:16px;
+        }
+        header.row{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        h1{ margin:0; font-size:20px; }
+        h2{ margin-top:0; font-size:18px; }
+        .muted{ color:var(--muted); font-size:13px; }
+        .tabs{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+        .tab{
+            padding:8px 12px; border-radius:10px; border:1px solid var(--line);
+            background:#fff; cursor:pointer; font-size:14px;
+        }
+        .tab.active{ background:linear-gradient(180deg,#fff,#fff7f6); border-color:var(--accent); box-shadow:0 6px 16px rgba(232,106,106,.08); }
+        .meta-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+        .pill{ background:#fff; padding:8px 10px; border-radius:12px; border:1px solid var(--line); font-size:14px; }
+        .summary{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; font-size:14px; margin:10px 0; }
+        .chart-wrap{ padding:10px 6px; background:#fff; border:1px solid var(--line); border-radius:10px; margin:10px 0; }
+        .small{ font-size:13px; color:var(--muted); }
+        .rank-pill{ display:inline-block; padding:6px 10px; border-radius:999px; background:var(--seat-empty); border:1px solid var(--line); font-weight:700; }
+        .top-seats{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+        .seat-card{ background:#fff; border-radius:10px; padding:8px 10px; border:1px solid var(--line); min-width:120px; }
+        table.log-table{ width:100%; border-collapse:collapse; margin-top:10px; }
+        table.log-table th,table.log-table td{ border:1px solid var(--line); padding:6px 8px; font-size:14px; text-align:left; }
+        table.log-table th{ background:var(--table); }
+        select.history-select{ margin-top:8px; padding:6px 10px; border-radius:8px; border:1px solid var(--line); }
+        @media (max-width:720px){
+            .grid-2{ grid-template-columns: 1fr; }
+        }
+        svg { width:100%; height:220px; display:block; }
+        .gridline { stroke:#f0efee; stroke-width:1; }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: #3498db;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>图书馆座位助手</h1>
+        <p>北京师范大学会同书院</p>
+    </div>
+
+    <div class="content">
+        <div class="wrap">
+            <div class="card">
+                <header class="row">
+                    <div>
+                        <h1>个人学习报告</h1>
+                        <div class="muted" id="generatedAt">生成时间：—</div>
+                    </div>
+                    <div class="meta-row">
+                        <div class="pill small">账户：<strong id="userName">我</strong></div>
+                        <div class="pill small">学号/工号：<strong id="userId">202512345</strong></div>
+                    </div>
+                </header>
+                <div class="tabs" role="tablist" aria-label="报告类型">
+                    <button class="tab active" data-report="today">今日学习报告</button>
+                    <button class="tab" data-report="weekly">周度学习报告</button>
+                    <button class="tab" data-report="monthly">月度学习报告</button>
+                    <button class="tab" data-report="yearly">年度学习报告</button>
+                    <button class="tab" data-report="history">历史学习报告</button>
+                </div>
+            </div>
+            <div id="reportArea"></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href = 'main.html?page=seat'">
+            <div class="nav-icon">💺</div>
+            <div class="nav-label">座位管理</div>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">学习报告</div>
+        </div>
+        <div class="nav-item" onclick="window.location.href = 'main.html?page=profile'">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">个人资料</div>
+        </div>
+    </div>
+
+    <script>
+        // 以下是您原有的所有JavaScript代码
+        const CURRENT_DATE = new Date('2025-10-03T08:30:00+09:00');
+        const DATA_STORE = {
+            user: { name: '我', id: '202512345' },
+            today: {
+                log: [
+                    {time:'08:10', action:'进馆'},
+                    {time:'10:00', action:'暂离'},
+                    {time:'10:20', action:'暂离回来'},
+                    {time:'12:30', action:'退座'}
+                ],
+                currentlyInRoom: false,
+                currentRankAmongPresent: 2,
+            },
+            weekly: {
+                weekLabel: '2025-W39',
+                entryTimes: ['08:10','07:30','--','09:20','10:05','08:40','13:15'],
+                durations: [240,180,0,200,210,260,60],
+                seatFreq:[{seat:'T3',room:'自习室 A',times:8},{seat:'B2',room:'自习室 A',times:6},{seat:'T1',room:'自习室 A',times:4}],
+                rank: 3
+            },
+            monthly: {
+                monthLabel:'2025-09',
+                entryTimes: Array.from({length:30},(_,i)=> i%5===2?'--':`${8+Math.floor(Math.random()*6)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`),
+                durations: Array.from({length:30},(_,i)=> i%5===2?0:100+Math.floor(Math.random()*200)),
+                seatFreq:[{seat:'T3',room:'自习室 A',times:56},{seat:'B2',room:'自习室 A',times:41},{seat:'T1',room:'自习室 A',times:27}],
+                rank: 1
+            },
+            yearly: {
+                yearLabel:'2024',
+                weekAvgEntry:Array.from({length:12},()=> `${7+Math.floor(Math.random()*3)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`),
+                monthDurations:[3000,2800,2600,2900,3100,3200,3300,3000,3100,3400,3600,3700],
+                seatFreq:[{seat:'T3',room:'自习室 A',times:230},{seat:'B2',room:'自习室 A',times:180},{seat:'B4',room:'自习室 B',times:150}],
+                rank: 2
+            },
+            history:{
+                '2025-09-28':{
+                    log:[{time:'09:00',action:'进馆'},{time:'11:00',action:'暂离'},{time:'11:20',action:'暂离回来'},{time:'14:00',action:'退座'}],
+                    rank:5,
+                    total:300
+                },
+                '2025-09-29':{
+                    log:[{time:'08:30',action:'进馆'},{time:'12:30',action:'退座'}],
+                    rank:2,
+                    total:240
+                }
+            }
+        };
+
+        function fmtTime(dt){return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;}
+        function secondsToHHMM(sec){const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return `${h} 小时 ${m} 分钟`;}
+
+        function renderLineChartTime({times,labels,height=200}){
+            const vals=times.map(t=>{
+                if(t==='--') return null;
+                const [h,m]=t.split(':').map(Number);
+                return h*60+m;
+            });
+            const valid=vals.filter(v=>v!==null);
+            const min=Math.min(...valid),max=Math.max(...valid);
+            const w=700,h=height,pad=30;
+            const stepX=(w-pad*2)/(vals.length-1);
+            const points=vals.map((v,i)=>v===null?null:[pad+i*stepX,pad+((max-v)/(max-min||1))*(h-pad*2)]);
+            let pathD='',areaD='';
+            points.forEach((p,i)=>{if(p)pathD+=pathD?` L${p[0]} ${p[1]}`:`M${p[0]} ${p[1]}`;});
+            areaD=pathD+` L${pad+(vals.length-1)*stepX} ${h-pad} L${pad} ${h-pad} Z`;
+            let svg=`<svg viewBox="0 0 ${w} ${h}">`;
+            const ticks=4;
+            for(let t=0;t<=ticks;t++){
+                const val=min+((ticks-t)/ticks)*(max-min);
+                const hh=Math.floor(val/60),mm=String(Math.round(val%60)).padStart(2,'0');
+                const y=pad+t*((h-pad*2)/ticks);
+                svg+=`<line x1="${pad}" x2="${w-pad}" y1="${y}" y2="${y}" class="gridline"/>`;
+                svg+=`<text x="${pad-8}" y="${y+4}" font-size="11" text-anchor="end" fill="#777">${hh}:${mm}</text>`;
+            }
+            labels.forEach((lab,i)=>{const x=pad+i*stepX;svg+=`<text x="${x}" y="${h-pad+15}" font-size="11" text-anchor="middle" fill="#777">${lab}</text>`;});
+            svg+=`<path d="${areaD}" fill="rgba(232,106,106,0.08)"/>`;
+            svg+=`<path d="${pathD}" stroke="#e86a6a" stroke-width="2.5" fill="none"/>`;
+            points.forEach(p=>{if(p)svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#e86a6a"/>`;});
+            svg+='</svg>';
+            return svg;
+        }
+
+        function renderBarChart({data,labels,height=200}){
+            const max=Math.max(...data),w=700,h=height,pad=30;
+            const barW=(w-pad*2)/(data.length*1.4),gap=(w-pad*2-barW*data.length)/(data.length-1);
+            let svg=`<svg viewBox="0 0 ${w} ${h}">`;
+            const ticks=3;
+            for(let t=0;t<=ticks;t++){
+                const val=Math.round(max-(t*(max/ticks)));
+                const y=pad+t*((h-pad*2)/ticks);
+                svg+=`<line x1="${pad}" x2="${w-pad}" y1="${y}" y2="${y}" class="gridline"/>`;
+                svg+=`<text x="${pad-8}" y="${y+4}" font-size="11" text-anchor="end" fill="#777">${val}</text>`;
+            }
+            data.forEach((v,i)=>{
+                const x=pad+i*(barW+gap);
+                const barH=(v/max)*(h-pad*2),y=h-pad-barH;
+                svg+=`<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="6" ry="6" fill="#e86a6a"/>`;
+                if(labels)svg+=`<text x="${x+barW/2}" y="${h-pad+15}" font-size="11" text-anchor="middle" fill="#777">${labels[i]}</text>`;
+            });
+            svg+='</svg>';return svg;
+        }
+
+        function renderToday(){
+            return `<div class="card"><h2>今日学习报告</h2>
+                <div class="summary">
+                    <strong>进馆流水</strong>：
+                    <table class="log-table"><tr><th>时间</th><th>事件</th></tr>
+                        ${DATA_STORE.today.log.map(e=>`<tr><td>${e.time}</td><td>${e.action}</td></tr>`).join('')}
+                    </table>
+                    <br/>当前在馆学习时长排名：<span class="rank-pill">第 ${DATA_STORE.today.currentRankAmongPresent} 名</span>
+                </div></div>`;
+        }
+
+        function renderWeekly(){
+            return `<div class="card"><h2>周度学习报告（上一周）</h2>
+                <div class="summary">个人周排名：<span class="rank-pill">第 ${DATA_STORE.weekly.rank} 名</span></div>
+                <h3>7 天进馆时间折线图</h3>
+                <div class="chart-wrap">${renderLineChartTime({times:DATA_STORE.weekly.entryTimes,labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']})}</div>
+                <h3>7 天在馆学习时长</h3>
+                <div class="chart-wrap">${renderBarChart({data:DATA_STORE.weekly.durations,labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun']})}</div>
+                <h3>座位使用频率前三名</h3>
+                <div class="top-seats">${DATA_STORE.weekly.seatFreq.map(s=>`<div class="seat-card"><strong>${s.seat}</strong><div class="small">${s.room}</div><div class="muted">使用 ${s.times} 次</div></div>`).join('')}</div>
+            </div>`;
+        }
+
+        function renderMonthly(){
+            const labels=DATA_STORE.monthly.entryTimes.map((_,i)=>String(i+1));
+            return `<div class="card"><h2>月度学习报告（上一月）</h2>
+                <div class="summary">个人月排名：<span class="rank-pill">第 ${DATA_STORE.monthly.rank} 名</span></div>
+                <h3>每日进馆时间折线图</h3>
+                <div class="chart-wrap">${renderLineChartTime({times:DATA_STORE.monthly.entryTimes,labels:labels})}</div>
+                <h3>每日在馆学习时长</h3>
+                <div class="chart-wrap">${renderBarChart({data:DATA_STORE.monthly.durations,labels:labels})}</div>
+                <h3>座位使用频率前三名</h3>
+                <div class="top-seats">${DATA_STORE.monthly.seatFreq.map(s=>`<div class="seat-card"><strong>${s.seat}</strong><div class="small">${s.room}</div><div class="muted">使用 ${s.times} 次</div></div>`).join('')}</div>
+            </div>`;
+        }
+
+        function renderYearly(){
+            const labels=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return `<div class="card"><h2>年度学习报告（上一年）</h2>
+                <div class="summary">个人年排名：<span class="rank-pill">第 ${DATA_STORE.yearly.rank} 名</span></div>
+                <h3>每周平均进馆时间折线图</h3>
+                <div class="chart-wrap">${renderLineChartTime({times:DATA_STORE.yearly.weekAvgEntry,labels:labels.slice(0,DATA_STORE.yearly.weekAvgEntry.length)})}</div>
+                <h3>每月在馆学习时长</h3>
+                <div class="chart-wrap">${renderBarChart({data:DATA_STORE.yearly.monthDurations,labels:labels})}</div>
+                <h3>座位使用频率前三名</h3>
+                <div class="top-seats">${DATA_STORE.yearly.seatFreq.map(s=>`<div class="seat-card"><strong>${s.seat}</strong><div class="small">${s.room}</div><div class="muted">使用 ${s.times} 次</div></div>`).join('')}</div>
+            </div>`;
+        }
+
+        function renderHistory(){
+            const keys=Object.keys(DATA_STORE.history);
+            const options=keys.map(k=>`<option value="${k}">${k}</option>`).join('');
+            return `<div class="card"><h2>历史学习报告</h2>
+                <select class="history-select" id="historySelect">${options}</select>
+                <div id="historyContent"></div>
+            </div>`;
+        }
+
+        function renderHistoryDetail(day){
+            const data=DATA_STORE.history[day];
+            if(!data) return '';
+            return `<div class="summary">
+                <strong>${day} 学习流水</strong>：
+                <table class="log-table"><tr><th>时间</th><th>事件</th></tr>
+                    ${data.log.map(e=>`<tr><td>${e.time}</td><td>${e.action}</td></tr>`).join('')}
+                </table>
+                <br/>当天总学习时长：<strong>${data.total} 分钟</strong><br/>
+                当日排名：<span class="rank-pill">第 ${data.rank} 名</span>
+            </div>`;
+        }
+
+        const tabs=document.querySelectorAll('.tab'),reportArea=document.getElementById('reportArea');
+        function showReport(k){
+            if(k==='today') reportArea.innerHTML=renderToday();
+            if(k==='weekly') reportArea.innerHTML=renderWeekly();
+            if(k==='monthly') reportArea.innerHTML=renderMonthly();
+            if(k==='yearly') reportArea.innerHTML=renderYearly();
+            if(k==='history'){
+                reportArea.innerHTML=renderHistory();
+                const sel=document.getElementById('historySelect');
+                const first=sel.value;
+                document.getElementById('historyContent').innerHTML=renderHistoryDetail(first);
+                sel.addEventListener('change',()=>{document.getElementById('historyContent').innerHTML=renderHistoryDetail(sel.value);});
+            }
+            tabs.forEach(t=>t.classList.toggle('active',t.dataset.report===k));
+        }
+        (function init(){
+            document.getElementById('userName').textContent=DATA_STORE.user.name;
+            document.getElementById('userId').textContent=DATA_STORE.user.id;
+            document.getElementById('generatedAt').textContent=`生成时间：${fmtTime(CURRENT_DATE)} （Tokyo）`;
+            showReport('today');
+            tabs.forEach(t=>t.addEventListener('click',()=>showReport(t.dataset.report)));
+        })();
+    </script>
+</body>
+</html>
