@@ -331,55 +331,30 @@
     
     <script>
         // 座位管理功能
-        const KEY = "lx_voice_room_occupancy_v1";
-        const occupancy = JSON.parse(localStorage.getItem(KEY) || "{}");
+        let occupancy = {}; // 后端同步数据
+        const BASE_URL = "http://127.0.0.1:5000";
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
         
         // 座位数量限制配置 - 每个人最多只能选1个座位
         const MAX_OCCUPIED_SEATS_PER_USER = 1;
 
-        // 检查当前用户是否已经占用了座位
-        function getUserOccupiedSeatsCount() {
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-            if (!currentUser) return 0;
-            
-            // 这里简化处理，实际应该根据用户ID来统计
-            // 由于原代码没有用户关联，我们统计所有占用的座位
-            return Object.values(occupancy).filter(state => 
-                state === 'occupied' || state === 'away').length;
-        }
+        function fetchSeatStatus() {
+            fetch(`${BASE_URL}/seats`)
+                .then(res => res.json())
+                .then(data => {
+                    occupancy = {};
+                    data.forEach(s => {
+                        occupancy[s.seat_id] = s.status;
+                        const seat = document.querySelector(`.seat[data-id="${s.seat_id}"]`);
+                        if (!seat) return;
+                        seat.classList.remove("occupied", "away");
+                        if (s.status === "使用中" || s.status === "occupied") seat.classList.add("occupied");
+                        if (s.status === "暂离"   || s.status === "away")     seat.classList.add("away");
 
-        // 检查当前用户是否可以占用新座位
-        function canUserOccupyNewSeat() {
-            return getUserOccupiedSeatsCount() < MAX_OCCUPIED_SEATS_PER_USER;
-        }
-
-        function setSeatState(id, state) {
-            const seat = document.querySelector(`.seat[data-id="${id}"]`);
-            if (!seat) return;
-            
-            // 检查是否试图占用新座位但已达到限制
-            const currentState = occupancy[id] || 'empty';
-            if (currentState === 'empty' && (state === 'occupied' || state === 'away') && !canUserOccupyNewSeat()) {
-                alert(`您已经占用了 ${getUserOccupiedSeatsCount()} 个座位，每人最多只能占用 ${MAX_OCCUPIED_SEATS_PER_USER} 个座位。`);
-                return;
-            }
-            
-            seat.classList.remove('occupied', 'away');
-            if (state === 'occupied') seat.classList.add('occupied');
-            if (state === 'away') seat.classList.add('away');
-            occupancy[id] = state;
-            localStorage.setItem(KEY, JSON.stringify(occupancy));
-        }
-
-        function applyStored() {
-            for (const [id, state] of Object.entries(occupancy)) {
-                const seat = document.querySelector(`.seat[data-id="${id}"]`);
-                if (seat) {
-                    seat.classList.remove('occupied', 'away');
-                    if (state === 'occupied') seat.classList.add('occupied');
-                    if (state === 'away') seat.classList.add('away');
-                }
-            }
+                    });
+                    // attachDemoToggle();  // ✅ 加在这里
+                });
         }
 
         let currentPopup = null;
@@ -429,40 +404,108 @@
         }
 
         function attachDemoToggle() {
-            document.querySelectorAll('.seat').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = btn.dataset.id;
-                    const state = occupancy[id] || 'empty';
-                    if (state === 'empty') {
-                        setSeatState(id, 'occupied');
-                    } else if (state === 'occupied') {
-                        showSeatOptions(btn);
-                    } else if (state === 'away') {
-                        setSeatState(id, 'occupied');
-                    }
-                });
+            const map = document.getElementById('map');
+            map.addEventListener('click', (e) => {
+                const btn = e.target.closest('.seat');
+                if (!btn) return;
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const raw = occupancy[id] || 'empty';
+                const state = (raw === '使用中' ? 'occupied' : raw === '暂离' ? 'away' : (raw === '空闲' ? 'empty' : raw));
+                if (state === 'empty') {
+                    setSeatState(id, 'occupied');
+                } else if (state === 'occupied') {
+                    showSeatOptions(btn);
+                } else if (state === 'away') {
+                    setSeatState(id, 'occupied');
+                }
             });
 
             document.addEventListener('click', () => { closePopup(); });
         }
 
-        document.getElementById('btn-reset').addEventListener('click', () => {
-            localStorage.removeItem(KEY);
-            Object.keys(occupancy).forEach(k => { delete occupancy[k]; });
-            document.querySelectorAll('.seat').forEach(s => {
-                s.classList.remove('occupied', 'away');
+        function setSeatState(id, state) {
+            if (!currentUser) {
+                alert("请先登录！");
+                window.location.href = "index.html";
+                return;
+            }
+
+            let action = "";
+            if (state === "occupied") action = "选座";
+            else if (state === "away") action = "暂离";
+            else if (state === "empty") action = "退座";
+
+            // fetch(`${BASE_URL}/seat_action`, {
+            //     method: "POST",
+            //     headers: { "Content-Type": "application/json" },
+            //     body: JSON.stringify({
+            //         // student_id: (currentUser.student_id || currentUser.id),
+            //         // student_id: (currentUser?.user?.student_id || currentUser?.student_id || currentUser?.id),
+            //         student_id: (currentUser?.student_id || currentUser?.id || currentUser?.user?.student_id),
+            //         seat_id: id,
+            //         action: action
+            //     })
+            // })
+            //     .then(res => res.json())
+            //     .then(result => {
+            //         fetchSeatStatus();
+            //         setTimeout(() => alert(result.msg), 100);
+            //     })
+            //     .catch(err => {
+            //         alert("请求失败，请检查后端是否运行：" + err);
+            //     });
+            fetch(`${BASE_URL}/seat_action`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    student_id: (currentUser?.student_id || currentUser?.id || currentUser?.user?.student_id),
+                    seat_id: id,
+                    action: action
+                })
+            })
+            .then(res => res.json())
+            .then(result => {
+                // ✅ 本地即时更新颜色（不等后端返回）
+                const seat = document.querySelector(`.seat[data-id="${id}"]`);
+                if (seat) {
+                    seat.classList.remove("occupied", "away");
+                    if (state === "occupied") seat.classList.add("occupied");
+                    if (state === "away") seat.classList.add("away");
+                }
+                // ✅ 保持原有的后端刷新
+                fetchSeatStatus();
+                setTimeout(() => alert(result.msg), 150);
+            })
+            .catch(err => {
+                alert("请求失败，请检查后端是否运行：" + err);
             });
-            closePopup();
+                
+        }
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            fetch(`${BASE_URL}/seats/reset`, { method: "POST" })
+                .then(res => res.json())
+                .then(() => {
+                    fetchSeatStatus();
+                    closePopup();
+                });
         });
+
 
         document.getElementById('btn-scan-help').addEventListener('click', () => {
             alert('座位管理帮助：点击座位可以切换状态，红色表示有人，米色表示空位。每人最多只能占用1个座位。');
         });
 
         // 初始化
-        applyStored();
-        attachDemoToggle();
+        // fetchSeatStatus();
+        // attachDemoToggle();
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            attachDemoToggle();
+            fetchSeatStatus();
+        });
+
     </script>
 </body>
 </html>

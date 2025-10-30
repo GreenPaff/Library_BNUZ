@@ -218,7 +218,7 @@
         <div class="page active" id="profilePage">
             <div class="profile-card">
                 <div class="profile-header">
-                    <div class="avatar" id="userAvatar">用</div>
+                    <div class="avatar" id="userAvatar">学</div>
                     <div class="user-info">
                         <h2 id="userName">加载中...</h2>
                         <p id="userRole">学生</p>
@@ -240,7 +240,7 @@
                     </div>
                     <div class="info-item">
                         <div class="info-label">座位状态</div>
-                        <div class="info-value" id="seatStatus">未预约</div>
+                        <div class="info-value" id="seatStatus">加载中...</div>
                     </div>
                 </div>
 
@@ -293,76 +293,62 @@
     </div>
 
     <script>
-        // 页面加载时检查登录状态
-        document.addEventListener('DOMContentLoaded', function() {
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const BASE_URL = "http://127.0.0.1:5000";
 
+        // 页面加载时检查登录状态并拉取用户信息
+        document.addEventListener('DOMContentLoaded', async function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
             if (!currentUser) {
-                // 未登录，跳转回登录页
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 从后端获取最新数据
+            const res = await fetch(`${BASE_URL}/user/${currentUser.student_id}`);
+            const data = await res.json();
+
+            if (data.status === "error") {
+                alert("用户不存在，请重新登录。");
+                localStorage.removeItem('currentUser');
                 window.location.href = 'index.html';
                 return;
             }
 
             // 显示用户信息
-            document.getElementById('userName').textContent = currentUser.name || '学生' + currentUser.id;
-            document.getElementById('userId').textContent = currentUser.id;
-            document.getElementById('userAvatar').textContent = currentUser.name ? currentUser.name.charAt(0) : '学';
-            document.getElementById('registerTime').textContent = currentUser.registerTime || '未知';
+            document.getElementById('userName').textContent = data.name || '学生' + data.student_id;
+            document.getElementById('userId').textContent = data.student_id;
+            document.getElementById('userAvatar').textContent = data.name ? data.name.charAt(0) : '学';
+            document.getElementById('registerTime').textContent = data.register_time || '未知';
 
-            // 设置头像背景色（基于用户ID生成）
+            // 设置头像颜色
             const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
-            const colorIndex = currentUser.id ? currentUser.id.charCodeAt(0) % colors.length : 0;
+            const colorIndex = data.student_id.charCodeAt(0) % colors.length;
             document.getElementById('userAvatar').style.background = colors[colorIndex];
-            
-            // 检查座位状态
-            checkSeatStatus(currentUser.id);
-        });
 
-        // 检查座位状态
-        function checkSeatStatus(userId) {
-            const seatOccupancyKey = `lx_voice_room_occupancy_${userId}`;
-            const seatData = localStorage.getItem(seatOccupancyKey);
-            
-            if (seatData) {
-                const seatInfo = JSON.parse(seatData);
-                document.getElementById('seatStatus').textContent = `已预约: ${seatInfo.seatNumber || '未知座位'}`;
+            // 显示座位状态
+            if (data.current_seat) {
+                document.getElementById('seatStatus').textContent = `已预约: ${data.current_seat}`;
                 document.getElementById('seatStatus').style.color = '#2ecc71';
             } else {
                 document.getElementById('seatStatus').textContent = '未预约';
                 document.getElementById('seatStatus').style.color = '#e74c3c';
             }
-        }
+        });
 
-        // 切换页面
+        // 页面切换
         function switchPage(pageId, navItem) {
-            // 隐藏所有页面
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-
-            // 显示目标页面
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-
-            // 更新导航栏状态
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-
-            if (navItem) {
-                navItem.classList.add('active');
-            }
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            if (navItem) navItem.classList.add('active');
         }
 
-        // 显示设置页面
+        // 设置页
         function showSettings() {
             switchPage('settingsPage');
-            // 设置页面没有对应的导航项，所以清除所有激活状态
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
         }
 
-        // 返回个人资料
         function goBackToProfile() {
             switchPage('profilePage', document.querySelector('.nav-item:nth-child(3)'));
         }

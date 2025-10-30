@@ -229,17 +229,14 @@
             <!-- 登录表单 -->
             <form class="form active" id="loginForm">
                 <h2 class="form-title">登录</h2>
-
                 <div class="input-group">
-                    <label for="loginId">学号/邮箱</label>
-                    <input type="text" id="loginId" placeholder="请输入学号或邮箱" required>
+                    <label for="loginId">学号</label>
+                    <input type="text" id="loginId" placeholder="请输入学号" required>
                 </div>
-
                 <div class="input-group">
                     <label for="loginPassword">密码</label>
                     <input type="password" id="loginPassword" placeholder="请输入密码" required>
                 </div>
-
                 <button type="submit" class="submit-btn">登录</button>
                 <a href="#" class="forgot-password">忘记密码？</a>
             </form>
@@ -247,41 +244,31 @@
             <!-- 注册表单 -->
             <form class="form" id="registerForm">
                 <h2 class="form-title">注册</h2>
-
                 <div class="input-group">
                     <label for="registerStudentId">学号</label>
                     <input type="text" id="registerStudentId" placeholder="请输入学号" required>
                 </div>
-
                 <div class="input-group">
                     <label for="registerPassword">设置密码</label>
                     <input type="password" id="registerPassword" placeholder="请输入密码" required>
                 </div>
-
                 <div class="input-group">
                     <label for="confirmPassword">确认密码</label>
                     <input type="password" id="confirmPassword" placeholder="请再次输入密码" required>
                 </div>
-
                 <button type="submit" class="submit-btn">注册</button>
             </form>
         </div>
 
         <div class="footer">
-            © 2023 图书馆座位助手 | 北京师范大学会同书院
+            © 2025 图书馆座位助手 | 北京师范大学会同书院
         </div>
     </div>
 
     <script>
-        // 切换登录/注册表单
-        document.getElementById('loginTab').addEventListener('click', function() {
-            switchToLogin();
-        });
+        const BASE_URL = "http://127.0.0.1:5000";
 
-        document.getElementById('registerTab').addEventListener('click', function() {
-            switchToRegister();
-        });
-
+        // --- 切换登录/注册 ---
         function switchToLogin() {
             document.getElementById('loginTab').classList.add('active');
             document.getElementById('registerTab').classList.remove('active');
@@ -298,7 +285,10 @@
             hideMessage();
         }
 
-        // 显示消息
+        document.getElementById('loginTab').onclick = switchToLogin;
+        document.getElementById('registerTab').onclick = switchToRegister;
+
+        // --- 消息显示 ---
         function showMessage(text, type) {
             const messageEl = document.getElementById('message');
             messageEl.textContent = text;
@@ -306,90 +296,64 @@
             messageEl.style.display = 'block';
         }
 
-        // 隐藏消息
         function hideMessage() {
             document.getElementById('message').style.display = 'none';
         }
 
-        // 初始化用户数据
-        if (!localStorage.getItem('users')) {
-            localStorage.setItem('users', JSON.stringify([]));
-        }
-
-        // 登录表单提交
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // --- 登录逻辑（后端验证） ---
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-
-            const username = document.getElementById('loginId').value;
+            const student_id = document.getElementById('loginId').value;
             const password = document.getElementById('loginPassword').value;
 
-            const users = JSON.parse(localStorage.getItem('users'));
-            const user = users.find(u => (u.id === username || u.email === username) && u.password === password);
+            const res = await fetch(`${BASE_URL}/login`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({student_id, password})
+            });
 
-            if (user) {
+            const data = await res.json();
+            if (data.status === "success") {
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
                 showMessage('登录成功！正在跳转...', 'success');
-                localStorage.setItem('currentUser', JSON.stringify(user));
-
-                // 模拟跳转
-                // 实际跳转到主页面
-              setTimeout(function() {
-                  window.location.href = 'main.html';
-              }, 1500);
+                setTimeout(() => window.location.href = 'main.html', 1200);
             } else {
-                showMessage('学号/邮箱或密码错误，请重试', 'error');
+                showMessage(data.msg, 'error');
             }
         });
 
-        // 注册表单提交
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
+        // --- 注册逻辑 ---
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-
-            const studentId = document.getElementById('registerStudentId').value;
+            const student_id = document.getElementById('registerStudentId').value;
             const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
 
-            if (password !== confirmPassword) {
+            if (password !== confirm) {
                 showMessage('两次输入的密码不一致', 'error');
                 return;
             }
 
-            if (password.length < 6) {
-                showMessage('密码长度至少为6位', 'error');
-                return;
+            const res = await fetch(`${BASE_URL}/register`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({student_id, password})
+            });
+
+            const data = await res.json();
+            if (data.status === "success") {
+                showMessage('注册成功！请登录', 'success');
+                setTimeout(switchToLogin, 1500);
+            } else {
+                showMessage(data.msg, 'error');
             }
-
-            const users = JSON.parse(localStorage.getItem('users'));
-
-            // 检查是否已注册
-            if (users.some(u => u.id === studentId)) {
-                showMessage('该学号已注册', 'error');
-                return;
-            }
-
-            // 添加新用户
-            const newUser = {
-                id: studentId,
-                password: password,
-                name: '学生' + studentId.slice(-4),
-                registerTime: new Date().toLocaleString()
-            };
-
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-
-            showMessage('注册成功！请登录', 'success');
-
-            // 清空表单
-            document.getElementById('registerForm').reset();
-
-            // 切换到登录表单
-            setTimeout(switchToLogin, 1500);
         });
 
-        // 帮助图标点击事件
+        // 帮助说明
         document.querySelector('.help-icon').addEventListener('click', function() {
-            alert('图书馆座位助手使用说明：\n\n1. 注册：使用学号进行注册\n2. 登录：使用学号或邮箱登录\n3. 功能：座位预约、学习报告、个人资料管理');
+            alert('使用说明：\n1. 使用学号注册\n2. 登录后可进行选座、学习报告查看、资料管理');
         });
     </script>
 </body>
 </html>
+
