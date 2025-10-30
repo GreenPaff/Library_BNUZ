@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书馆座位助手 - 主页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+            min-height: calc(100vh - 140px);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-right: 20px;
+        }
+
+        .user-info h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .user-info p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .settings-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .settings-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .seat-map-container, .report-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .seat-map-container h2, .report-container h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .seat-map-placeholder, .report-placeholder {
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: #3498db;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>图书馆座位助手</h1>
+        <p>北京师范大学会同书院</p>
+    </div>
+
+    <div class="content">
+        <!-- 个人资料页面 -->
+        <div class="page active" id="profilePage">
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="avatar" id="userAvatar">用</div>
+                    <div class="user-info">
+                        <h2 id="userName">加载中...</h2>
+                        <p id="userRole">学生</p>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">学号</div>
+                        <div class="info-value" id="userId">加载中...</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">学院</div>
+                        <div class="info-value">会同书院</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">注册时间</div>
+                        <div class="info-value" id="registerTime">加载中...</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">座位状态</div>
+                        <div class="info-value" id="seatStatus">未预约</div>
+                    </div>
+                </div>
+
+                <button class="settings-btn" onclick="showSettings()">设置</button>
+                <button class="settings-btn logout-btn" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+
+        <!-- 座位管理页面 -->
+<!--        <div class="page" id="seatPage">-->
+<!--            <div class="seat-map-container">-->
+<!--                <h2>座位管理</h2>-->
+<!--                <div class="seat-map-placeholder">-->
+<!--                    座位地图功能开发中...-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+
+<!--        &lt;!&ndash; 学习报告页面 &ndash;&gt;-->
+<!--        <div class="page" id="reportPage">-->
+<!--            <div class="report-container">-->
+<!--                <h2>学习报告</h2>-->
+<!--                <div class="report-placeholder">-->
+<!--                    学习报告功能开发中...-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+
+        <!-- 设置页面 -->
+        <div class="page" id="settingsPage">
+            <div class="profile-card">
+                <h2 style="margin-bottom: 20px;">设置</h2>
+
+                <div class="info-item" style="margin-bottom: 15px;">
+                    <div class="info-label">通知设置</div>
+                    <div class="info-value">
+                        <label><input type="checkbox" checked> 座位预约提醒</label>
+                    </div>
+                </div>
+
+                <div class="info-item" style="margin-bottom: 15px;">
+                    <div class="info-label">主题</div>
+                    <div class="info-value">
+                        <select style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option>浅色模式</option>
+                            <option>深色模式</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="settings-btn" onclick="goBackToProfile()">返回个人资料</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航栏 -->
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href = 'seat.html'">
+            <div class="nav-icon">💺</div>
+            <div class="nav-label">座位管理</div>
+        </div>
+        <div class="nav-item" onclick="window.location.href = 'report.html'">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">学习报告</div>
+        </div>
+        <div class="nav-item" onclick="switchPage('profilePage', this)">
+            <div class="nav-icon">👤</div>
+            <div class="nav-label">个人资料</div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (!currentUser) {
+                // 未登录，跳转回登录页
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 显示用户信息
+            document.getElementById('userName').textContent = currentUser.name || '学生' + currentUser.id;
+            document.getElementById('userId').textContent = currentUser.id;
+            document.getElementById('userAvatar').textContent = currentUser.name ? currentUser.name.charAt(0) : '学';
+            document.getElementById('registerTime').textContent = currentUser.registerTime || '未知';
+
+            // 设置头像背景色（基于用户ID生成）
+            const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+            const colorIndex = currentUser.id ? currentUser.id.charCodeAt(0) % colors.length : 0;
+            document.getElementById('userAvatar').style.background = colors[colorIndex];
+        });
+
+        // 切换页面
+        function switchPage(pageId, navItem) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+
+            // 更新导航栏状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            if (navItem) {
+                navItem.classList.add('active');
+            }
+        }
+
+        // 显示设置页面
+        function showSettings() {
+            switchPage('settingsPage');
+            // 设置页面没有对应的导航项，所以清除所有激活状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        // 返回个人资料
+        function goBackToProfile() {
+            switchPage('profilePage', document.querySelector('.nav-item:nth-child(3)'));
+        }
+
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
